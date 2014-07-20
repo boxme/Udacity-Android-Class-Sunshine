@@ -22,6 +22,10 @@ public class TestDb extends AndroidTestCase {
 
     public static final String TAG = TestDb.class.getSimpleName();
 
+    public static String TEST_CITY_NAME = "North Pole";
+    public static String TEST_LOCATION = "99705";
+    public static String TEST_DATE = "20141205";
+
     public void testCreateDb() throws Throwable {
         mContext.deleteDatabase(WeatherDbHelper.DATABASE_NAME);
         SQLiteDatabase db = new WeatherDbHelper(
@@ -33,7 +37,7 @@ public class TestDb extends AndroidTestCase {
     static ContentValues createWeatherValues(long locationRowId) {
         ContentValues weatherValues = new ContentValues();
         weatherValues.put(WeatherEntry.COLUMN_LOC_KEY, locationRowId);
-        weatherValues.put(WeatherEntry.COLUMN_DATETEXT, "20141205");
+        weatherValues.put(WeatherEntry.COLUMN_DATETEXT, TEST_DATE);
         weatherValues.put(WeatherEntry.COLUMN_DEGREES, 1.1);
         weatherValues.put(WeatherEntry.COLUMN_HUMIDITY, 1.2);
         weatherValues.put(WeatherEntry.COLUMN_PRESSURE, 1.3);
@@ -48,8 +52,8 @@ public class TestDb extends AndroidTestCase {
 
     static ContentValues createLocationValues() {
         ContentValues values = new ContentValues();
-        values.put(LocationEntry.COLUMN_LOCATION_SETTING, "99705");
-        values.put(LocationEntry.COLUMN_CITY_NAME, "North Pole");
+        values.put(LocationEntry.COLUMN_LOCATION_SETTING, TEST_LOCATION);
+        values.put(LocationEntry.COLUMN_CITY_NAME, TEST_CITY_NAME);
         values.put(LocationEntry.COLUMN_COORD_LAT, 64.7488);
         values.put(LocationEntry.COLUMN_COORD_LONG, -147.353);
 
@@ -97,6 +101,7 @@ public class TestDb extends AndroidTestCase {
         );
 
         validateCursor(cursor, values);
+        cursor.close();
 
         ContentValues weatherValues = createWeatherValues(locationRowId);
 
@@ -116,6 +121,7 @@ public class TestDb extends AndroidTestCase {
         );
 
         validateCursor(weatherTableCursor, weatherValues);
+        cursor.close();
 
         dbHelper.close();
     }
