@@ -113,6 +113,7 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
                 0
         );
 
+        // Check out the source code of SimpleCursorAdapter
         mForecastAdapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
             @Override
             public boolean setViewValue(View view, Cursor cursor, int columnIndex) {
@@ -130,6 +131,10 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
                         dateView.setText(Utility.formatDate(dateString));
                         return true;
                 }
+                
+                // If return false, 2 types of binding will occur
+                // 1: view is a TextView, SimpleCursorAdapter#setViewText(TextView, String) is called
+                // 2: view is a ImageView, SimpleCursorAdapter#setViewImage(ImageView v, String value) is called
                 return false;
             }
         });
