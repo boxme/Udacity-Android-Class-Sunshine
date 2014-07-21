@@ -35,4 +35,6 @@ public class SettingsActivity extends ActionBarActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         return super.onOptionsItemSelected(item);
     }
+
+
 }

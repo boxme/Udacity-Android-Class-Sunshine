@@ -29,16 +29,14 @@
         </activity>
         <activity
             android:name=".SettingsActivity"
-            android:label="@string/title_activity_settings"
-            android:parentActivityName=".MainActivity" >
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.desmond.sunshine.MainActivity" />
+            android:label="@string/title_activity_settings" >
         </activity>
 
         <provider
             android:authorities="com.desmond.sunshine.app"
-            android:name=".data.WeatherProvider" />
+            android:name=".data.WeatherProvider"
+            android:enabled="true"
+            android:exported="false"/>
 
     </application>
 

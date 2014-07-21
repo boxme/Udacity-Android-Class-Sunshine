@@ -10,7 +10,6 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import android.widget.ArrayAdapter;
 
 import com.desmond.sunshine.data.WeatherContract;
 import com.desmond.sunshine.data.WeatherContract.LocationEntry;
@@ -27,7 +26,6 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Vector;
 
@@ -39,11 +37,9 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
     private final String TAG = FetchWeatherTask.class.getSimpleName();
     private static boolean DEBUG = true;
 
-    private ArrayAdapter<String> mForecastAdapter;
     private final Context mContext;
 
-    public FetchWeatherTask(Context context, ArrayAdapter<String> forecastAdapter) {
-        mForecastAdapter = forecastAdapter;
+    public FetchWeatherTask(Context context ) {
         mContext = context;
     }
 
@@ -63,12 +59,6 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
         }
 
         return null;
-    }
-
-    @Override
-    protected void onPostExecute(String[] results) {
-        mForecastAdapter.clear();
-        mForecastAdapter.addAll(Arrays.asList(results));
     }
 
     /**
@@ -243,7 +233,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
 
         String format = "json";
         String units = "metric";
-        int numDays = 714;
+        int numDays = 14;
 
         try {
             // Construct the URL for the OpenWeatherMap query
