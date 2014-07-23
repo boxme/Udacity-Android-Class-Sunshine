@@ -1,12 +1,9 @@
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<fragment xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/activity_frame"
+    android:id="@+id/fragment_forecast"
+    android:name="com.desmond.sunshine.ForecastFragment"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
-    android:paddingTop="@dimen/activity_vertical_margin"
-    android:paddingBottom="@dimen/activity_vertical_margin"
-    tools:context=".MainActivity">
 
-</FrameLayout>
+    tools:context="com.desmond.sunshine.ForecastFragment"
+    tools:layout="@android:layout/list_content" />

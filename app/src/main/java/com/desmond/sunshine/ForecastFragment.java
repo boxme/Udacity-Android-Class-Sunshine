@@ -1,6 +1,6 @@
 package com.desmond.sunshine;
 
-import android.content.Intent;
+import android.app.Activity;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -8,7 +8,6 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
-import android.support.v4.widget.SimpleCursorAdapter;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -17,7 +16,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
-import android.widget.TextView;
 
 import com.desmond.sunshine.data.WeatherContract;
 import com.desmond.sunshine.data.WeatherContract.LocationEntry;
@@ -31,10 +29,15 @@ import java.util.Date;
 public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
 
     private static final String TAG = ForecastFragment.class.getSimpleName();
-    private SimpleCursorAdapter mForecastAdapter;
+    private ForecastAdapter mForecastAdapter;
 
     private static final int FORECAST_LOADER = 0;
+    private static final String LOCATION_KEY = "location";
     private String mLocation;
+
+    private static final String POSITION_KEY = "position";
+    private int mPosition;
+    private ListView mListView;
 
     // For the forecast view we're showing only a small subset of the stored data.
     // Specify the columns we need
@@ -50,6 +53,7 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
             WeatherEntry.COLUMN_SHORT_DESC,
             WeatherEntry.COLUMN_MAX_TEMP,
             WeatherEntry.COLUMN_MIN_TEMP,
+            WeatherEntry.COLUMN_WEATHER_ID,
             LocationEntry.COLUMN_LOCATION_SETTING
     };
 
@@ -59,11 +63,40 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     public static final int COL_WEATHER_DESC = 2;
     public static final int COL_WEATHER_MAX_TEMP = 3;
     public static final int COL_WEATHER_MIN_TEMP = 4;
-    public static final int COL_LOCATION_SETTING = 5;
+    public static final int COL_WEATHER_CONDITION_ID = 5;
+    public static final int COL_LOCATION_SETTING = 6;
+
+    private Callback mListener;
+
+    private boolean mUseTodayLayout;
+
+    /**
+     * A callback interface that all activities containing this fragment must
+     * implement. This mechanism allows activities to be notified of item
+     * selections.
+     */
+    public interface Callback {
+        /**
+         * Callback for when an item has been selected.
+         */
+        public void onItemSelected(String date);
+    }
+
+    @Override
+    public void onAttach(Activity activity) {
+        mListener = (Callback) activity;
+        super.onAttach(activity);
+    }
+
+    @Override
+    public void onDetach() {
+        mListener = null;
+        super.onDetach();
+    }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
-        getLoaderManager().restartLoader(FORECAST_LOADER, null, this);
+        getLoaderManager().initLoader(FORECAST_LOADER, null, this);
         super.onActivityCreated(savedInstanceState);
     }
 
@@ -82,6 +115,17 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     }
 
     @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putString(LOCATION_KEY, mLocation);
+
+        if (mPosition != ListView.INVALID_POSITION) {
+            outState.putInt(POSITION_KEY, mPosition);
+        }
+
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
@@ -90,83 +134,67 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+
+        if (savedInstanceState != null && savedInstanceState.containsKey(LOCATION_KEY)) {
+            mLocation = savedInstanceState.getString(LOCATION_KEY);
+        }
+
+        if (savedInstanceState != null && savedInstanceState.containsKey(POSITION_KEY)) {
+            mPosition = savedInstanceState.getInt(POSITION_KEY);
+        }
+
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
-        mForecastAdapter = new SimpleCursorAdapter(
+        mForecastAdapter = new ForecastAdapter(
                 getActivity(),
-                R.layout.list_item_forecast,
                 null,
-                // The columns names to use to fill the textViews
-                new String[] {
-                        WeatherEntry.COLUMN_DATETEXT,
-                        WeatherEntry.COLUMN_SHORT_DESC,
-                        WeatherEntry.COLUMN_MAX_TEMP,
-                        WeatherEntry.COLUMN_MIN_TEMP
-                },
-                // The textViews to fill with the data pulled from the columns above
-                new int[] {
-                        R.id.list_item_date_textview,
-                        R.id.list_item_forecast_textview,
-                        R.id.list_item_high_textview,
-                        R.id.list_item_low_textview
-                },
                 0
         );
 
+        // Activity#onCreate might called before fragment#onCreateView
+        // when adapter is null.
+        // So we set the mUseTodayLayout value to the adapter here too
+        mForecastAdapter.setUseTodayLayout(mUseTodayLayout);
+
         // Check out the source code of SimpleCursorAdapter
-        mForecastAdapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
-            @Override
-            public boolean setViewValue(View view, Cursor cursor, int columnIndex) {
-                boolean isMetric = Utility.isMetric(getActivity());
-                switch (columnIndex) {
-                    case COL_WEATHER_MAX_TEMP:
-                    case COL_WEATHER_MIN_TEMP:
-                        // we have to do some formatting and possibly a conversion
-                        ((TextView) view).setText(Utility.formatTemperature(
-                                cursor.getDouble(columnIndex), isMetric));
-                        return true;
-                    case COL_WEATHER_DATE:
-                        String dateString = cursor.getString(columnIndex);
-                        TextView dateView = (TextView) view;
-                        dateView.setText(Utility.formatDate(dateString));
-                        return true;
-                }
-                
-                // If return false, 2 types of binding will occur
-                // 1: view is a TextView, SimpleCursorAdapter#setViewText(TextView, String) is called
-                // 2: view is a ImageView, SimpleCursorAdapter#setViewImage(ImageView v, String value) is called
-                return false;
-            }
-        });
+        // The code below is for use with a SimpleCursorAdapter
+//        mForecastAdapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
+//            @Override
+//            public boolean setViewValue(View view, Cursor cursor, int columnIndex) {
+//                boolean isMetric = Utility.isMetric(getActivity());
+//                switch (columnIndex) {
+//                    case COL_WEATHER_MAX_TEMP:
+//                    case COL_WEATHER_MIN_TEMP:
+//                        // we have to do some formatting and possibly a conversion
+//                        ((TextView) view).setText(Utility.formatTemperature(
+//                                cursor.getDouble(columnIndex), isMetric));
+//                        return true;
+//                    case COL_WEATHER_DATE:
+//                        String dateString = cursor.getString(columnIndex);
+//                        TextView dateView = (TextView) view;
+//                        dateView.setText(Utility.formatDate(dateString));
+//                        return true;
+//                }
+//
+//                // If return false, 2 types of binding will occur
+//                // 1: view is a TextView, SimpleCursorAdapter#setViewText(TextView, String) is called
+//                // 2: view is a ImageView, SimpleCursorAdapter#setViewImage(ImageView v, String value) is called
+//                return false;
+//            }
+//        });
 
 
-        ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
-        listView.setAdapter(mForecastAdapter);
+        mListView = (ListView) rootView.findViewById(R.id.listview_forecast);
+        mListView.setAdapter(mForecastAdapter);
 
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Cursor cursor = mForecastAdapter.getCursor();
                 if (cursor != null && cursor.moveToPosition(position)) {
-//                    String dateString = Utility.formatDate(cursor.getString(COL_WEATHER_DATE));
-//                    String weatherDesc = cursor.getString(COL_WEATHER_DESC);
-//
-//                    boolean isMetric = Utility.isMetric(getActivity());
-//                    String high = Utility.formatTemperature(
-//                            cursor.getDouble(COL_WEATHER_MAX_TEMP), isMetric
-//                    );
-//
-//                    String low = Utility.formatTemperature(
-//                            cursor.getDouble(COL_WEATHER_MIN_TEMP), isMetric
-//                    );
-//
-//                    String detailString = String.format("%s - %s - %s/%s",
-//                            dateString, weatherDesc, high, low);
-
-                    Intent detailActivityIntent = new Intent(getActivity(), DetailActivity.class);
-                    detailActivityIntent.putExtra(DetailActivity.DATE_KEY, cursor.getString(COL_WEATHER_DATE));
-                    startActivity(detailActivityIntent);
+                    mListener.onItemSelected(cursor.getString(COL_WEATHER_DATE));
                 }
+                mPosition = position;
             }
         });
 
@@ -197,6 +225,13 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
                 .execute(Utility.getPreferredLocation(getActivity()));
     }
 
+    public void setUseTodayLayout(boolean useTodayLayout) {
+        mUseTodayLayout = useTodayLayout;
+        if (mForecastAdapter != null) {
+            mForecastAdapter.setUseTodayLayout(useTodayLayout);
+        }
+    }
+
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         // This is called when a new loader needs to be created. This
@@ -223,6 +258,7 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
                 null,
                 sortOrder
         );
+
     }
 
     @Override
@@ -232,6 +268,10 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
 
         if (!mLocation.equals(Utility.getPreferredLocation(getActivity()))) {
             getLoaderManager().restartLoader(FORECAST_LOADER, null, this);
+        } else if (mPosition != ListView.INVALID_POSITION) {
+            // If we don't need to restart the loader, and there's a desired position to
+            // restore to, do so now
+//            mListView.setSelection(mPosition);
         }
     }
 

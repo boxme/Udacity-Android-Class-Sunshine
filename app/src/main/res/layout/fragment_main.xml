@@ -8,7 +8,8 @@
     <ListView
         android:id="@+id/listview_forecast"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        style="@style/ForecastListStyle">
 
     </ListView>
 

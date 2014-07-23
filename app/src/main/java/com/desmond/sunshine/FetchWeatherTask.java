@@ -148,7 +148,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
         double cityLatitude = coordJSON.getDouble(OWM_COORD_LAT);
         double cityLongitude = coordJSON.getDouble(OWM_COORD_LONG);
 
-        // Insert the location into the database.
+        /** Insert the location into the database. */
         long locationID = insertLocationInDatabase(
                 locationSetting, cityName, cityLatitude, cityLongitude
         );
@@ -217,6 +217,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
             resultStrs[i] = day + " - " + description + " - " + highAndLow;
         }
 
+        /** Insert weather data into database */
         insertWeatherIntoDatabase(cVVector);
 
         return resultStrs;
