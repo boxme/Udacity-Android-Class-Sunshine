@@ -9,6 +9,7 @@ import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 
 import com.desmond.sunshine.data.WeatherContract;
+import com.desmond.sunshine.sync.SunshineSyncAdapter;
 
 
 /**
@@ -38,9 +39,10 @@ public class SettingsFragment extends PreferenceFragment {
                     }
 
                     if (!mBindingPreferences) {
-                        FetchWeatherTask weatherTask = new FetchWeatherTask(getActivity());
-                        String location = sharedPreferences.getString(key, getString(R.string.pref_location_default));
-                        weatherTask.execute(location);
+//                        FetchWeatherTask weatherTask = new FetchWeatherTask(getActivity());
+//                        String location = sharedPreferences.getString(key, getString(R.string.pref_location_default));
+//                        weatherTask.execute(location);
+                        SunshineSyncAdapter.syncImmediately(getActivity());
                     } else {
                         // Notify code that weather may be impacted
                         getActivity().getContentResolver().notifyChange(WeatherContract.WeatherEntry.CONTENT_URI, null);

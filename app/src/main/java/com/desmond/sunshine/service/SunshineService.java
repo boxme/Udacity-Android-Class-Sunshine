@@ -1,19 +1,21 @@
-package com.desmond.sunshine;
+package com.desmond.sunshine.service;
 
+import android.app.IntentService;
+import android.content.BroadcastReceiver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
+import com.desmond.sunshine.R;
+import com.desmond.sunshine.Utility;
 import com.desmond.sunshine.data.WeatherContract;
-import com.desmond.sunshine.data.WeatherContract.LocationEntry;
-import com.desmond.sunshine.data.WeatherContract.WeatherEntry;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -30,35 +32,32 @@ import java.util.Date;
 import java.util.Vector;
 
 /**
- * Created by desmond on 21/7/14.
+ * Created by desmond on 23/7/14.
  */
-public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
+public class SunshineService extends IntentService {
 
-    private final String TAG = FetchWeatherTask.class.getSimpleName();
+    public static final String TAG = SunshineService.class.getSimpleName();
+    public static final String LOCATION_QUERY_EXTRA = "lqe";
+
     private static boolean DEBUG = true;
 
-    private final Context mContext;
-
-    public FetchWeatherTask(Context context ) {
-        mContext = context;
+    public SunshineService() {
+        super(TAG);
     }
 
     @Override
-    protected Void doInBackground(String... params) {
-
-        if (params.length == 0) {
-            return null;
+    protected void onHandleIntent(Intent intent) {
+        String postalCode = intent.getStringExtra(LOCATION_QUERY_EXTRA);
+        if (postalCode == null || postalCode.isEmpty()) {
+            return;
         }
-        String weatherForecast = getWeatherForecastData(params[0]);
+        String weatherForecast = getWeatherForecastData(postalCode);
 
         try {
-            getWeatherDataFromJson(weatherForecast, params[0]);
-            return null;
+            getWeatherDataFromJson(weatherForecast, postalCode);
         } catch (JSONException e) {
             e.printStackTrace();
         }
-
-        return null;
     }
 
     /**
@@ -82,15 +81,15 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
         // change this option without us having to re-fetch the data once
         // we start storing the values in a database
         SharedPreferences sharePrefs =
-                PreferenceManager.getDefaultSharedPreferences(mContext);
+                PreferenceManager.getDefaultSharedPreferences(this);
         String unitType = sharePrefs.getString(
-                mContext.getString(R.string.pref_units_key),
-                mContext.getString(R.string.pref_units_metric));
+                this.getString(R.string.pref_units_key),
+                this.getString(R.string.pref_units_metric));
 
-        if (unitType.equals(mContext.getString(R.string.pref_units_imperial))) {
+        if (unitType.equals(this.getString(R.string.pref_units_imperial))) {
             high = (high * 1.8) + 32;
             low = (low * 1.8) + 32;
-        } else if (!unitType.equals(mContext.getString(R.string.pref_units_metric))) {
+        } else if (!unitType.equals(this.getString(R.string.pref_units_metric))) {
             Log.d(TAG, "Unit type not found: " + unitType);
         }
 
@@ -197,16 +196,16 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
 
             ContentValues weatherValues = new ContentValues();
 
-            weatherValues.put(WeatherEntry.COLUMN_LOC_KEY, locationID);
-            weatherValues.put(WeatherEntry.COLUMN_DATETEXT, WeatherContract.getDbDateString(new Date(dateTime * 1000L)));
-            weatherValues.put(WeatherEntry.COLUMN_HUMIDITY, humidity);
-            weatherValues.put(WeatherEntry.COLUMN_PRESSURE, pressure);
-            weatherValues.put(WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
-            weatherValues.put(WeatherEntry.COLUMN_DEGREES, windDirection);
-            weatherValues.put(WeatherEntry.COLUMN_MAX_TEMP, high);
-            weatherValues.put(WeatherEntry.COLUMN_MIN_TEMP, low);
-            weatherValues.put(WeatherEntry.COLUMN_SHORT_DESC, description);
-            weatherValues.put(WeatherEntry.COLUMN_WEATHER_ID, weatherId);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LOC_KEY, locationID);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DATETEXT, WeatherContract.getDbDateString(new Date(dateTime * 1000L)));
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_HUMIDITY, humidity);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_PRESSURE, pressure);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DEGREES, windDirection);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_MAX_TEMP, high);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_MIN_TEMP, low);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_SHORT_DESC, description);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WEATHER_ID, weatherId);
 
             cVVector.add(weatherValues);
         }
@@ -300,10 +299,10 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
         long rowId = 0;
 
         // First check if the location with this city name exists in the db
-        Cursor cursor = mContext.getContentResolver().query(
-                LocationEntry.CONTENT_URI,
-                new String[] {LocationEntry._ID},
-                LocationEntry.COLUMN_LOCATION_SETTING + " = ?",
+        Cursor cursor = this.getContentResolver().query(
+                WeatherContract.LocationEntry.CONTENT_URI,
+                new String[] {WeatherContract.LocationEntry._ID},
+                WeatherContract.LocationEntry.COLUMN_LOCATION_SETTING + " = ?",
                 new String[] {locationSetting},
                 null,
                 null
@@ -311,18 +310,18 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
 
         if (cursor != null && cursor.moveToFirst()) {
 
-            int locationIdIndex =  cursor.getColumnIndex(LocationEntry._ID);
+            int locationIdIndex =  cursor.getColumnIndex(WeatherContract.LocationEntry._ID);
             rowId = cursor.getLong(locationIdIndex);
 
         } else {
 
             ContentValues locationValues = new ContentValues();
-            locationValues.put(LocationEntry.COLUMN_LOCATION_SETTING, locationSetting);
-            locationValues.put(LocationEntry.COLUMN_CITY_NAME, cityName);
-            locationValues.put(LocationEntry.COLUMN_COORD_LAT, lat);
-            locationValues.put(LocationEntry.COLUMN_COORD_LONG, lon);
+            locationValues.put(WeatherContract.LocationEntry.COLUMN_LOCATION_SETTING, locationSetting);
+            locationValues.put(WeatherContract.LocationEntry.COLUMN_CITY_NAME, cityName);
+            locationValues.put(WeatherContract.LocationEntry.COLUMN_COORD_LAT, lat);
+            locationValues.put(WeatherContract.LocationEntry.COLUMN_COORD_LONG, lon);
 
-            Uri uri = mContext.getContentResolver().insert(LocationEntry.CONTENT_URI, locationValues);
+            Uri uri = this.getContentResolver().insert(WeatherContract.LocationEntry.CONTENT_URI, locationValues);
             rowId = ContentUris.parseId(uri);
 
         }
@@ -339,14 +338,14 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
             ContentValues[] contentValuesArray = new ContentValues[CVVector.size()];
             CVVector.toArray(contentValuesArray);
 
-            int rowsInserted = mContext.getContentResolver().bulkInsert(WeatherEntry.CONTENT_URI, contentValuesArray);
+            int rowsInserted = this.getContentResolver().bulkInsert(WeatherContract.WeatherEntry.CONTENT_URI, contentValuesArray);
 
             // Use a DEBUG variable to gate whether or not you do this, so you can easily
             // turn it on and off, and so that it's easy to see what you can rip out if
             // you ever want to remove it.
             if (DEBUG) {
-                Cursor weatherCursor = mContext.getContentResolver().query(
-                        WeatherEntry.CONTENT_URI,
+                Cursor weatherCursor = this.getContentResolver().query(
+                        WeatherContract.WeatherEntry.CONTENT_URI,
                         null,
                         null,
                         null,
@@ -364,6 +363,16 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
                     Log.v(TAG, "Query failed! :( **********");
                 }
             }
+        }
+    }
+
+    public static class AlarmReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Intent startServiceIntent = new Intent(context, SunshineService.class);
+            startServiceIntent.putExtra(SunshineService.LOCATION_QUERY_EXTRA,
+                    Utility.getPreferredLocation(context));
+            context.startService(startServiceIntent);
         }
     }
 }

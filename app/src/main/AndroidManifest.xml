@@ -5,6 +5,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Permission required by the sync adapter -->
+    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
+    <uses-permission android:name="android.permission.READ_SYNC_STATS" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -34,10 +40,35 @@
         </activity>
 
         <provider
-            android:authorities="com.desmond.sunshine.app"
+            android:authorities="@string/content_authority"
             android:name=".data.WeatherProvider"
-            android:enabled="true"
+            android:syncable="true"
             android:exported="false"/>
+
+        <service android:name=".service.SunshineService" />
+
+        <receiver android:name=".service.SunshineService$AlarmReceiver" />
+
+        <!-- SyncAdapter's dummy authentication service -->
+        <service android:name=".sync.SunshineAuthenticatorService" >
+            <intent-filter>
+                <action android:name="android.accounts.AccountAuthenticator" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accounts.AccountAuthenticator"
+                android:resource="@xml/authenticator"/>
+        </service>
+
+        <!-- The SyncAdapter service -->
+        <service android:name=".sync.SunshineSyncService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.content.SyncAdapter"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.content.SyncAdapter"
+                android:resource="@xml/syncadapter"/>
+        </service>
 
     </application>
 
